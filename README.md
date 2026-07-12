@@ -1,8 +1,8 @@
 # HFT FPGA Trading Engine ⚡
 
-A 10 Gbps hardware-accelerated market data parser built on a custom Artix-7 PCB. The goal was to build something that resembles what actual HFT firms run in their data centers — a dedicated FPGA card that sits on the network, parses incoming market data packets entirely in silicon, and fires a trade execution signal in under 150 nanoseconds. No CPU, no operating system, no software stack in the critical path.
+A 10 Gbps hardware-accelerated market data parser built on a custom Artix-7 PCB. The goal was to build something that resembles what actual HFT firms run in their firms: a dedicated FPGA card that sits on the network, parses incoming market data packets entirely in silicon, and fires a trade execution signal in under 150 nanoseconds.
 
-This has been my main project this summer and honestly the most technically challenging thing I've built. It touches everything — PCB design, high-speed signal integrity, RTL design, network protocols, timing closure, and clock domain crossing. I learned a ton.
+This has been my main project this summer and the most technically challenging thing I've built. It touches everything: PCB design, high-speed signal integrity, RTL design, network protocols, timing closure, and clock domain crossing. I used the end of this README as a reflection on what I learned from this project as well as the design considerations I made throughout.
 
 ---
 
@@ -26,7 +26,7 @@ Total latency from first byte arriving at the SFP+ pin to `signal_trigger` asser
 
 ## The PCB
 
-I designed a custom 4-layer PCB in Altium Designer from scratch. This was my first time doing a board with a BGA component and high-speed differential pairs and it was genuinely difficult — lots of hours spent on signal integrity, stackup design, and BGA escape routing.
+I designed a custom 4-layer PCB in Altium Designer from scratch. This was my first time doing a board with a BGA component and high-speed differential pairs, so I was able to learn about signal integrity and overall hardware design (many hours spent on signal integrity, stackup design, and BGA escape routing)
 
 <!-- INSERT: Altium 3D render of board here -->
 <!-- INSERT: PCB layout screenshot showing SFP+ differential pairs and BGA -->
@@ -38,8 +38,6 @@ I designed a custom 4-layer PCB in Altium Designer from scratch. This was my fir
 - **Power chain:** USB-C → USBLC6 ESD protection → TPS25942 eFuse → TPS62130 buck regulators (1.0V VCCINT, 1.8V VCCAUX, 3.3V IO)
 - **Interface:** SFP+ cage for 10GBASE-R fiber or DAC cable
 - **Layers:** 4-layer stackup — Signal / GND / PWR / Signal
-- **Surface finish:** ENIG (required for BGA soldering and SFP+ trace quality)
-- **Manufacturer:** PCBWay with turnkey SMT assembly
 
 **Signal integrity features:**
 - 100Ω differential impedance control on SFP+ TX/RX pairs
@@ -54,8 +52,7 @@ I designed a custom 4-layer PCB in Altium Designer from scratch. This was my fir
 The core of the project is `packet_parser.sv` — an 8-state FSM that processes one 64-bit word per clock cycle.
 
 STATE_IDLE → STATE_ETH → STATE_IP → STATE_UDP → STATE_PAYLOAD → STATE_IDLE
-↓
-STATE_DROP (on any validation failure)
+→STATE_DROP (on any validation failure)
 
 **The alignment problem:**
 
@@ -92,14 +89,14 @@ assign ip0 = aligned_data;  // permanently wired, not a register write
 | STATE_UDP | Destination port == configured trading port (0x1388) |
 | STATE_PAYLOAD | msg_type == 0x41 (Add Order), price vs threshold comparison |
 
-**The payload format** is modeled after NASDAQ ITCH message framing — fixed width, byte-aligned, fits in exactly two 64-bit words:
+**The payload format** is modeled after NASDAQ ITCH 5.0 message framing: fixed width, byte-aligned, fits in exactly two 64-bit words:
 
 Byte  0:    msg_type     (0x41 = Add Order, 0x44 = Delete)
-Byte  1:    side         (0x42 = Buy, 0x53 = Sell)
-Bytes 2-3:  ticker_id    (16-bit symbol)
-Bytes 4-7:  price        (32-bit fixed point, cents × 100)
-Bytes 8-11: quantity     (32-bit share count)
-Bytes 12-15: sequence_num (32-bit packet counter for drop detection)
+\nByte  1:    side         (0x42 = Buy, 0x53 = Sell)
+\nBytes 2-3:  ticker_id    (16-bit symbol)
+\nBytes 4-7:  price        (32-bit fixed point, cents × 100)
+\nBytes 8-11: quantity     (32-bit share count)
+\nBytes 12-15: sequence_num (32-bit packet counter for drop detection)
 
 If price < threshold and msg_type == Add Order, `signal_trigger` fires for one clock cycle and `target_stock_price_reg` latches the price for readout.
 
@@ -109,12 +106,12 @@ If price < threshold and msg_type == Add Order, `signal_trigger` fires for one c
 
 ## Clock Domain Crossing
 
-One of the things I'm most proud of understanding on this project is CDC. The design has two clock domains:
+The design has two clock domains:
 
-- **coreclk** (156.25 MHz, recovered by GTX CDR from incoming serial data) — drives MAC and parser
-- **Management domain** — reset synchronizer, heartbeat LED
+- **coreclk** (156.25 MHz, recovered by GTX CDR from incoming serial data) → drives MAC and parser
+- **Management domain** - reset synchronizer, heartbeat LED
 
-The key insight is that coreclk is recovered from the incoming data stream by the GTX Clock and Data Recovery circuit. It's phase-aligned with the received data, which is why the MAC and parser must run on it. If I ran the parser on an independent oscillator clock instead, the two clocks would be asynchronous and I'd get metastability — the parser could sample data mid-transition and produce garbage.
+The key insight is that coreclk is recovered from the incoming data stream by the GTX Clock and Data Recovery circuit. It's phase-aligned with the received data, which is why the MAC and parser must run on it. If I ran the parser on an independent oscillator clock instead, the two clocks would be asynchronous and I'd get metastability, and the parser could sample data mid-transition and produce garbage.
 
 For the reset crossing I implemented async-assert synchronous-deassert:
 
@@ -140,7 +137,7 @@ The `ASYNC_REG` attribute tells Vivado to physically colocate these flip-flops t
 
 I wrote a self-checking testbench in SystemVerilog that constructs real Ethernet/IP/UDP packets byte by byte, drives them into the parser at the correct timing, and automatically verifies the outputs.
 
-The packet construction was tricky — the bytes have to land in exactly the right 64-bit bus windows to match what the aligned_data logic produces. I spent a lot of time debugging this with the Vivado waveform viewer tracing individual bytes through the pipeline registers.
+The packet construction was tricky because the bytes have to land in exactly the right 64-bit bus windows to match what the aligned_data logic produces. I spent a lot of time debugging this with the Vivado waveform viewer tracing individual bytes through the pipeline registers.
 
 **Test cases:**
 
@@ -163,7 +160,7 @@ The packet construction was tricky — the bytes have to land in exactly the rig
 
 ## Hardware Note
 
-During implementation I discovered that the XC7A35T uses GTP transceivers rated to 6.6 Gbps maximum per Xilinx DS180, while 10GBASE-R requires 10.3125 Gbps. The design is fully validated in simulation. A production deployment would target a Kintex-7 or XC7A200T which have GTX transceivers rated to 12.5 Gbps. Everything else — the parser RTL, CDC architecture, AXI-Stream interface, testbench — is completely hardware-independent and valid.
+During implementation I discovered that the XC7A35T uses GTP transceivers rated to 6.6 Gbps maximum per Xilinx DS180, while 10GBASE-R requires 10Gbps. The design is fully validated in simulation. A production deployment would target a Kintex-7 or XC7A200T which have GTX transceivers rated to 12.5 Gbps. Everything else: the parser RTL, CDC architecture, AXI-Stream interface, testbench, is completely hardware-independent and valid.
 
 ---
 
