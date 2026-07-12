@@ -1,0 +1,38 @@
+# Vivado generated files
+*.jou
+*.log
+*.str
+*.xpr
+*.bit
+*.ltx
+*.rpt
+*.pb
+*.dcp
+vivado*/
+.Xil/
+*.runs/
+*.cache/
+*.hw/
+*.ip_user_files/
+*.sim/
+*.gen/
+*.srcs/synthesis/
+*.srcs/impl_*/
+
+# IP core generated files — keep .xci (config) but not generated output
+*.srcs/sources_1/ip/*/
+
+# Keep these:
+!*.xci
+!*.xdc
+!*.sv
+!*.v
+!*.md
+!*.py
+!*.png
+
+# OS files
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
