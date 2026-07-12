@@ -1,4 +1,4 @@
-# HFT FPGA Trading Engine ⚡
+# HFT FPGA Trading Engine
 
 A 10 Gbps hardware-accelerated market data parser built on a custom Artix-7 PCB. The goal was to build something that resembles what actual HFT firms run in their firms: a dedicated FPGA card that sits on the network, parses incoming market data packets entirely in silicon, and fires a trade execution signal in under 150 nanoseconds.
 
