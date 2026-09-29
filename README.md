@@ -29,6 +29,9 @@ Total latency from first byte arriving at the SFP+ pin to `signal_trigger` asser
 I designed a custom 4-layer PCB in Altium Designer from scratch. This was my first time doing a board with a BGA component and high-speed differential pairs, so I was able to learn about signal integrity and overall hardware design (many hours spent on signal integrity, stackup design, and BGA escape routing)
 
 <!-- INSERT: Altium 3D render of board here -->
+<p align="middle">
+  <img src="images/Screenshot 2026-09-29 162001.png" width="500">
+</p>
 <!-- INSERT: PCB layout screenshot showing SFP+ differential pairs and BGA -->
 
 **Board specs:**
@@ -39,6 +42,18 @@ I designed a custom 4-layer PCB in Altium Designer from scratch. This was my fir
 - **Interface:** SFP+ cage for 10GBASE-R fiber or DAC cable
 - **Layers:** 4-layer stackup — Signal / GND / PWR / Signal
 
+**Power Tree:**
+- USB-C 5V → ESD protection → eFuse → regulators for each rail.
+***3.3V Buck***
+<p align="middle">
+  <img src="images/Screenshot 2026-09-29 161715.png" width="500">
+</p>
+
+***1.2V LDO***
+<p align="middle">
+  <img src="images/Screenshot 2026-09-29 161757.png" width="500">
+</p>
+  
 **Signal integrity features:**
 - 100Ω differential impedance control on SFP+ TX/RX pairs
 - Ground via shielding fence alongside SFP+ differential traces
